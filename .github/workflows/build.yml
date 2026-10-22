@@ -1,0 +1,36 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack zip if uploaded
+        run: |
+          for z in *.zip; do
+            if [ -f "$z" ]; then unzip -oq "$z"; fi
+          done
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Accept Android licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build debug APK
+        run: |
+          echo "Files in repo root:"
+          ls -la
+          S=$(find . -name settings.gradle -not -path './.git/*' | head -1)
+          if [ -z "$S" ]; then echo "ERROR: settings.gradle not found in repo"; exit 1; fi
+          echo "settings.gradle found at: $S"
+          cd "$(dirname "$S")"
+          gradle assembleDebug --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: microbus3d-apk
+          path: '**/app-debug.apk'
